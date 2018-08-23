@@ -1,0 +1,43 @@
+modelname:  l24
+model : convs2s2D
+default_config : config/default.yaml
+
+network :
+  type: densenet
+  num_layers : 24
+  growth_rate : 32
+  kernel : 5
+  conv_dropout : .2
+  bias : 0
+  weigth_norm : 0
+  init_weights: 0
+  norm : batch
+  use_st : 0
+  half_inputs : 1
+
+data:
+  src : de
+  trg : en
+  dir : data/IWSLT14
+  batch_size: 16
+  max_src_length : 90
+  max_trg_length : 90
+
+
+track: 
+  batch_size : 4
+  checkpoint : 8000
+  max_length_a : 0
+  max_length_b : 90
+
+optim: 
+  max_epochs : 40
+  seed : 3
+  LR:
+      base : 0.0005
+      decay_start : 0
+      decay_every: 4
+      decay_rate : 0.8
+      patience : 3
+      schedule: early-stopping
+      criterion : loss

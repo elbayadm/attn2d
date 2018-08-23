@@ -1,0 +1,132 @@
+multi_gpus : 0
+modelname:  default
+start_from : 0
+start_from_best : 1
+reverse : 0
+model : convs2s2D
+
+encoder:
+  type : lookup
+  input_dim : 128
+  input_dropout : .2
+  encode_position : 0
+  encode_length : 0
+  max_length : 50
+  cell_type : lstm
+  cell_dim : 256
+  cell_dropout : .2
+  bidirectional : 1
+  num_layers : 1
+  parallel : 0
+  scale_grad_by_freq : 0
+  positional : 0
+    
+decoder:
+  type: lookup
+  tie_target_weights : 1
+  copy_source_weights : 0
+  input_dim : 128
+  input_dropout : .2
+  encode_position : 0
+  encode_length : 0
+  max_length : 50
+  cell_type : lstm
+  cell_dim : 256
+  positional : 0
+  cell_dropout : .2
+  num_layers : 1
+  state_update : 1
+  attention_dropout : .0
+  attention_mode : dot
+  normalize_attention : 0
+  attention_channels : 64,32
+  attention_windows : 9,7,5
+  decode: greedy 
+  prediction_dropout : .2
+  scale_grad_by_freq : 0
+  conditionned : 1
+  encode_length : 0
+  encode_position : 0
+  encode_position_mode : cat
+
+network :
+  type: densenet
+  kernels : 3
+  dilation : 1
+  groups : 1
+  conv_dropout : 0
+  growth_rate : 32
+  num_layers: 20
+  gated : 0
+  half_inputs : 0
+
+aggregator:
+  project_context : none
+  mode : max
+  pool_kernel : 3
+  pool_width : 8
+  attend_kernel : 3
+  pos_emb_dim : 64
+
+# For RNN models
+mapper:
+  dropout : .2
+
+loss:
+  version : ml  # tok , seq
+  combine_loss : 0  # if 1: Tok-Seq
+  normalize_batch : 1
+  penalize_confidence : 0
+
+data:
+  src : de
+  trg : en
+  dir : data/IWSLT14
+  batch_size: 32
+  max_src_length : 45
+  max_trg_length : 47
+
+optim: 
+  reset : 1
+  seed : 1
+  LR:
+      base : 0.001
+      decay_start : 0
+      decay_every: 10
+      decay_rate : 0.5
+      patience : 2
+      criterion : loss
+      schedule : step
+  # Scheudled sampling
+  SS:
+      start : -1
+      limit_vocab : 0
+      speed : 100
+      increase_every : 5
+      increase_prob : 0.05
+      schedule : step
+
+  num_batches : 1
+  max_epochs : 35
+  solver : adam
+  alpha : 0.9
+  beta : .999
+  epsilon : 1e-8
+  weight_decay : 0
+  amsgrad : 0
+  grad_clip : 1
+  nesterov : 0
+
+track :
+  batch_size : 32
+  split : val
+  max_length: 50
+  max_length_a : 0
+  max_length_b : 50
+  log_every : 20
+  checkpoint : 3000
+  beam_size : 1
+  forbid_unk : 1
+  all_metrics : 1
+  verbose : 0
+
