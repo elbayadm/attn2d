@@ -196,11 +196,6 @@ class Optimizer(object):
                 for pp in p['params']:
                     pp.requires_grad = True
 
-    def clip_gradient_nn(self):
-        ""
-        params = self.optimizer.params()
-        return nn.utils.clip_grad_norm_(params, self.grad_norm_max, self.grad_norm_type)
-
     def clamp_gradient(self):
         norm_type = self.grad_norm_type
         max_norm = self.grad_norm_max

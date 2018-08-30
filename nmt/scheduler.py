@@ -1,6 +1,6 @@
 from abc import abstractmethod
 import logging
-
+import math
 logger = logging.getLogger(__name__)
 
 
@@ -50,7 +50,7 @@ class SigmoidScheduler(Scheduler):
     def step(self):
         if self._epoch >= self.start and self.start >= 0:
             self.value = 1 - self.speed / (self.speed +
-                                           exp(self._iter / self.speed))
+                                           math.exp(self._iter / self.speed))
             self.value = min(self.value, self.max_value)
         self._iter += 1
 

@@ -4,21 +4,11 @@ import os.path as osp
 import copy
 import pickle
 import torch
-# from nltk.tokenize.moses import MosesDetokenizer
-# DETOK = MosesDetokenizer()
+
 _OKGREEN = '\033[92m'
 _WARNING = '\033[93m'
 _FAIL = '\033[91m'
 _ENDC = '\033[0m'
-
-
-def _print_sampled(source, gt, pred, score=None):
-    transition = '\n>> ' if not score else "\n>> %.3f >> " % score
-    source = " ".join(DETOK.detokenize(source.split())).encode('utf-8')
-    gt = " ".join(DETOK.detokenize(gt.split())).encode('utf-8')
-    pred = " ".join(DETOK.detokenize(pred.split())).encode('utf-8')
-    print(source, _OKGREEN, '\nGT:', gt, _WARNING, transition, pred, '\n', _ENDC)
-    return pred
 
 
 def print_sampled(source, gt, pred, score=None):
@@ -28,7 +18,6 @@ def print_sampled(source, gt, pred, score=None):
     pred = " ".join(pred.split()).encode('utf-8')
     print(source, _OKGREEN, '\nGT:', gt, _WARNING, transition, pred, '\n', _ENDC)
     return pred
-
 
 
 def log_epoch(writer, iteration, opt,
@@ -119,18 +108,6 @@ def log_optimizer(opt, optimizer):
                 print(pp.size(), end=' ')
             print('\n')
     opt.logger.debug('########### OPTIMIZER ###########')
-
-
-def add_summary_value_old(writer, key, value, iteration, collections=None):
-    """
-    Add value to tensorboard events
-    """
-    # import tensorflow as tf
-    _summary = tf.summary.scalar(name=key,
-                                 tensor=tf.Variable(value),
-                                 collections=collections)
-    summary = tf.Summary(value=[tf.Summary.Value(tag=key, simple_value=value)])
-    writer.add_summary(summary, iteration)
 
 
 def add_summary_value(writer, key, value, iteration):
