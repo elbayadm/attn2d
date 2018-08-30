@@ -7,10 +7,6 @@ import torch.nn.functional as F
 
 
 __all__ = ['truncated_max', "truncated_mean",  'average_code', 'max_code',
-           'combined_max_avg', 'pick_first',
-           'adaptive_avg_code', 'adaptive_max_code',
-           'hierarchical_max_code', 'hierarchical_avg_code',
-           'PositionalPooling',
            "MaxAttention", "MaxAttention2"]
 
 
@@ -56,12 +52,6 @@ def average_code(tensor, *args):
     return tensor.mean(dim=3)
 
 
-def pick_first(tensor, src_lengths=None, track=False):
-    # input size: N, d, Tt, Ts
-    # src_lengths : N, 1
-    return tensor[:, :, :, 0]
-
-
 def max_code(tensor, src_lengths=None, track=False):
     # input size: N, d, Tt, Ts
     # src_lengths : N, 1
@@ -96,78 +86,6 @@ def max_code(tensor, src_lengths=None, track=False):
         return xpool, (None, align, activ_distrib, activ)
     else:
         return tensor.max(dim=3)[0]
-
-
-def combined_max_avg(tensor, *args):
-    a_pool = tensor.mean(dim=3)
-    m_pool = tensor.max(dim=3)[0]
-    return torch.cat([m_pool, a_pool], dim=1)
-
-
-class hierarchical_max_code(nn.Sequential):
-    def __init__(self, kernel_size, dilation=1):
-        super(hierarchical_max_code, self).__init__()
-        pad = (dilation * (kernel_size - 1)) // 2
-        self.add_module('Pool1',
-                        nn.MaxPool2d(kernel_size,
-                                     padding=(pad, 0),
-                                     stride=(1, kernel_size)))
-    def forward(self, inputs, *args):
-        x = super(hierarchical_max_code, self).forward(inputs)
-        return x.mean(dim=3)
-
-
-class hierarchical_avg_code(nn.Sequential):
-    def __init__(self, kernel_size, dilation=1):
-        super(hierarchical_avg_code, self).__init__()
-        pad = (dilation * (kernel_size - 1)) // 2
-        self.add_module('Pool1',
-                        nn.AvgPool2d(kernel_size,
-                                     padding=(pad, 1), # usually 0, but for short sequences added 1
-                                     stride=(1, kernel_size)))
-    def forward(self, inputs, *args):
-        x = super(hierarchical_avg_code, self).forward(inputs)
-        return x.max(dim=3)[0]
-
-
-def adaptive_avg_code(x, out_channels=8):
-    x = F.adaptive_avg_pool2d(x, (x.size(2), out_channels))
-    return x.max(dim=3)[0]
-
-
-def adaptive_max_code(x, out_channels=8):
-    x = F.adaptive_max_pool2d(x, (x.size(2), out_channels))
-    return x.mean(dim=3)
-
-
-class PositionalPooling(nn.Module):
-    def __init__(self, max_length, emb_size):
-        super(PositionalPooling4, self).__init__()
-        self.src_embedding = nn.Embedding(max_length, emb_size)
-        self.trg_embedding = nn.Embedding(max_length, emb_size)
-        self.src_embedding.weight.data.fill_(1)
-        self.trg_embedding.weight.data.fill_(1)
-        self.src_embedding.bias.data.fill_(0)
-        self.trg_embedding.bias.data.fill_(0)
-
-        self.max = max_length
-
-    def forward(self, inputs, *args):
-        inputs = inputs.permute(0, 2, 3, 1)
-        N, Tt, Ts, d = inputs.size()
-        src = self.src_embedding(
-            torch.arange(Ts).type(torch.LongTensor).cuda()
-        )
-        trg = self.trg_embedding(
-            torch.arange(Tt).type(torch.LongTensor).cuda()
-        )
-        # print('src & trg:', src.size(), trg.size())
-        kernel = torch.matmul(trg, src.t())
-        # print('Kernel:', kernel.size())
-        kernel = kernel.unsqueeze(0).unsqueeze(-1)
-        result = inputs * kernel.expand_as(inputs)
-        result = result.mean(dim=2).permute(0, 2, 1)
-        return result
 
 
 class MaxAttention(nn.Module):

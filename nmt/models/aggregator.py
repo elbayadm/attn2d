@@ -15,27 +15,6 @@ class Aggregator(nn.Module):
             self.project = truncated_max
         elif mode == 'truncated-mean':
             self.project = truncated_mean
-        elif mode == 'first':
-                self.project = pick_first
-        elif mode == 'mean-max':
-            self.project = combined_max_avg
-            self.output_channels *= 2
-        elif mode == 'hierarchical-max':
-            self.project = hierarchical_max_code(params.get('pool_kernel', 3))
-        elif mode == 'hierarchical-mean':
-            self.project = hierarchical_avg_code(params.get('pool_kernel', 3))
-        elif mode == 'adapt-mean':
-            self.project = lambda x: adaptive_avg_code(
-                x, params.get('pool_width', 8)
-            )
-        elif mode == 'adapt-max':
-            self.project = lambda x: adaptive_max_code(
-                x, params.get('pool_width', 8)
-            )
-        elif mode == 'positional':
-            self.project = PositionalPooling(50, parmas.get('pos_emb_dim', 4))
-        elif mode == "identity":
-            self.project = lambda x, *args: x
         elif mode == "max-attention":
             self.project = MaxAttention(params, input_channls)
             self.output_channels *= (2 - (params['first_aggregator'] == "skip"))
