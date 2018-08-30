@@ -4,7 +4,6 @@ Samplers for data augmentation
 
 from .greedy import GreedySampler
 from .hamming import HammingSampler
-from .ngram import NgramSampler
 
 
 def init_sampler(select, opt, loader):
@@ -15,8 +14,6 @@ def init_sampler(select, opt, loader):
         return GreedySampler()
     elif select == 'hamming':
         return HammingSampler(opt, loader)
-    elif select == 'ngram':
-        return NgramSampler(opt)
     else:
         raise ValueError('Unknonw sampler %s' % select)
 
