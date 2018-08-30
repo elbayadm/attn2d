@@ -18,7 +18,7 @@ network :
 data:
   src : de
   trg : en
-  dir : data/IWSLT14
+  dir : data/iwslt14
   batch_size: 16
   max_src_length : 90
   max_trg_length : 90

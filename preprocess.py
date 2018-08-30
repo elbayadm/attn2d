@@ -3,11 +3,8 @@ import os.path as osp
 import argparse
 import h5py
 import numpy as np
-import progressbar
 from nmt.utils import pd
-"""
-TODO : add eos and bos to source h5 as well
-"""
+
 
 def build_vocab(sentences, max_words, vocab_file):
     """
@@ -69,7 +66,6 @@ def encode_sentences(sentences, params, wtoi):
     encode all sentences into one large array, which will be 1-indexed.
     No special tokens are added, except from the <pad> after the effective length
     """
-    # bar = progressbar.ProgressBar(max_value=len(sentences))
     max_length = params.max_length
     lengths = []
     m = len(sentences)
@@ -275,7 +271,7 @@ def main_src(params):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data_dir', type=str, default='WMT14')
+    parser.add_argument('-d', '--data_dir', type=str, default='WMT14')
     parser.add_argument('--src', type=str, default='en')
     parser.add_argument('--trg', type=str, default='fr')
     parser.add_argument('--max_words_src', default=30000, type=int,
@@ -291,150 +287,7 @@ if __name__ == "__main__":
 
     params = parser.parse_args()
     # Default settings:
-    if params.data_dir == 'WMT14':
-        params.src = "en"
-        params.trg = "fr"
-        params.max_words_trg = 30000
-        params.max_words_src = 30000
-    elif params.data_dir == 'IWSLT14':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 32009
-        params.max_words_trg = 22822
-    elif params.data_dir == 'IWSLT14_EDUNOV':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 14000
-        params.max_words_trg = 14000
-        params.max_length = 200
-
-    elif params.data_dir == 'IWSLT14_SORT':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 32009
-        params.max_words_trg = 22822
-
-    elif params.data_dir == 'IWSLT14_SORT_REV':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 32009
-        params.max_words_trg = 22822
-
-    elif params.data_dir == 'IWSLT14_SHUFF_SORT':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 32009
-        params.max_words_trg = 22822
-        params.shuffle_sort = 1
-
-    elif params.data_dir == 'IWSLT14_SHUFF_SORT_EVAL':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 32009
-        params.max_words_trg = 22822
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-
-    elif params.data_dir == 'IWSLT14_SHUFF_SORT_EVAL_V2':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 32009
-        params.max_words_trg = 22822
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-
-    elif params.data_dir == 'IWSLT14_ENDE':
-        params.max_words_src = 14000
-        params.max_words_trg = 14000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 0
-        params.max_length = 200
-        params.src = "en"
-        params.trg = "de"
-
-    elif params.data_dir == 'IWSLT14_SYM':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 32009
-        params.max_words_trg = 22822
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-
-    elif params.data_dir == 'WMT14ENDE_BPE_SHUFF_SORT_EVAL':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 40000
-        params.max_words_trg = 40000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-        params.max_length = 200
-
-    elif params.data_dir == 'WMT14ENDE_BPE_SHUFF_SORT_EVAL_V2':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 40000
-        params.max_words_trg = 40000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-        params.max_length = 200
-
-
-    elif params.data_dir == 'WMT14ENDE_SHUFF_SORT_EVAL':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 50000
-        params.max_words_trg = 50000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-        params.max_length = 100
-
-    elif params.data_dir == 'WMT14ENDE_SHUFF_SORT_EVAL_V2':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 50000
-        params.max_words_trg = 50000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-        params.max_length = 100
-
-    elif params.data_dir == 'WMT14ENDE_BPE_FIL_V2':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 40000
-        params.max_words_trg = 40000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-        params.max_length = 100
-
-    elif params.data_dir == 'WMT14ENDE_BPE_NEWS':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 40000
-        params.max_words_trg = 40000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-        params.max_length = 100
-
-    elif params.data_dir == 'WMT14_ENDE_PROP':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 32000
-        params.max_words_trg = 32000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-        params.max_length = 200
-
-    elif params.data_dir == 'WMT14ENDE_BPE_FIL_SHARED':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 32000
-        params.max_words_trg = 32000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-        params.max_length = 100
-        params.share_vocab = True
-
-    elif params.data_dir == 'IWSLT14_BPE_SHUFF_SORT_EVAL_V2':
+    if params.data_dir == 'iwslt14':
         params.src = "de"
         params.trg = "en"
         params.max_words_src = 14000
@@ -442,45 +295,6 @@ if __name__ == "__main__":
         params.shuffle_sort = 1
         params.shuffle_sort_eval = 0
         params.max_length = 200
-
-    elif params.data_dir == 'IWSLT14_BPE_SHUFF_SORT_EVAL':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 14000
-        params.max_words_trg = 14000
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-        params.max_length = 200
-
-    elif params.data_dir == 'IWSLT14_BPE':
-        params.src = "de"
-        params.trg = "en"
-        params.max_words_src = 14000
-        params.max_words_trg = 14000
-        params.max_length = 200
-
-    elif params.data_dir == 'wmt14_en_de_bpe':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 40000
-        params.max_words_trg = 40000
-        params.max_length = 200
-
-    elif params.data_dir == 'WMT14_EN_FR':
-        params.src = "en"
-        params.trg = "fr"
-        params.max_words_src = 32000
-        params.max_words_trg = 32000
-        params.max_length = 200
-        params.shuffle_sort = 1
-        params.shuffle_sort_eval = 1
-
-    elif params.data_dir == 'wmt14_en_de':
-        params.src = "en"
-        params.trg = "de"
-        params.max_words_src = 50000
-        params.max_words_trg = 50000
-        params.max_length = 50
 
     train_order, val_order, test_order, vocab = main_src(params)
     if params.share_vocab:
