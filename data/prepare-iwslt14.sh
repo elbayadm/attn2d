@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-#
 # Adapted from https://github.com/facebookresearch/MIXER/blob/master/prepareData.sh
 
-echo 'Cloning Moses github repository (for tokenization scripts)...'
-#git clone https://github.com/moses-smt/mosesdecoder.git
+if [ ! -d mosesdecoder ]; then 
+    echo 'Cloning Moses github repository (for tokenization scripts)...'
+    git clone https://github.com/moses-smt/mosesdecoder.git
+fi
 
-echo 'Cloning Subword NMT repository (for BPE pre-processing)...'
-#git clone https://github.com/rsennrich/subword-nmt.git
+if [ ! -d subword-nmt ]; then 
+    echo 'Cloning Subword NMT repository (for BPE pre-processing)...'
+    git clone https://github.com/rsennrich/subword-nmt.git
+fi
 
 SCRIPTS=mosesdecoder/scripts
 TOKENIZER=$SCRIPTS/tokenizer/tokenizer.perl
