@@ -227,7 +227,7 @@ class Trainer(object):
 
         if self.clip_norm > 0:
             grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(),
-                                                       self.clip_norm).data.item()
+                                                       self.clip_norm)
         self.track('optim/grad_norm', grad_norm)
         self.track('optim/ntokens', ntokens)
         self.track('optim/batch_size', nseqs)
