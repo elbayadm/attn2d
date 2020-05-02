@@ -1,7 +1,4 @@
 <p align="center">
-  <img src="fairseq_logo.png" width="150">
-  <br />
-  <br />
   <a href="https://github.com/pytorch/fairseq/blob/master/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
   <a href="https://github.com/pytorch/fairseq/releases"><img alt="Latest Release" src="https://img.shields.io/github/release/pytorch/fairseq.svg" /></a>
   <a href="https://github.com/pytorch/fairseq/actions?query=workflow:build"><img alt="Build Status" src="https://github.com/pytorch/fairseq/workflows/build/badge.svg" /></a>
@@ -14,6 +11,40 @@ A fork of Fairseq(-py), a sequence modeling toolkit that allows researchers and
 developers to train custom models for translation, summarization, language
 modeling and other text generation tasks.
 
+
+# Requirements and Installation
+
+* [PyTorch](http://pytorch.org/) version >= 1.4.0
+* Python version >= 3.6
+* For training new models, you'll also need an NVIDIA GPU and [NCCL](https://github.com/NVIDIA/nccl)
+* **For faster training** install NVIDIA's [apex](https://github.com/NVIDIA/apex) library:
+```bash
+git clone https://github.com/NVIDIA/apex
+cd apex
+pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" --global-option="--deprecated_fused_adam" --global-option="--xentropy" --global-option="--fast_multihead_attn" ./
+```
+
+To install fairseq:
+```bash
+pip install fairseq
+```
+
+On MacOS:
+```bash
+CFLAGS="-stdlib=libc++" pip install fairseq
+```
+
+If you use Docker make sure to increase the shared memory size either with
+`--ipc=host` or `--shm-size` as command line options to `nvidia-docker run`.
+
+**Installing from source**
+
+To install fairseq from source and develop locally:
+```bash
+git clone https://github.com/pytorch/fairseq
+cd fairseq
+pip install --editable .
+````` ``````
 
 # License
 fairseq(-py) is MIT-licensed.
