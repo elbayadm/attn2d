@@ -4,5 +4,3 @@
 # LICENSE file in the root directory of this source tree.
 
 __version__ = '0.9.0'
-
-import examples.noisychannel  # noqa
