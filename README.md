@@ -44,7 +44,7 @@ To install fairseq from source and develop locally:
 git clone https://github.com/pytorch/fairseq
 cd fairseq
 pip install --editable .
-````` ``````
+```
 
 # License
 fairseq(-py) is MIT-licensed.
