@@ -213,6 +213,15 @@ def _main(args, output_file):
                         ))
                     ), file=output_file)
 
+                    if 'context' in hypo:
+                        print('C-{}\t{}'.format(
+                            sample_id,
+                            ' '.join(map(
+                                lambda x: '{:.0f}'.format(x),
+                                hypo['context']#.tolist(),
+                            ))
+                        ))
+
                     if args.print_alignment:
                         print('A-{}\t{}'.format(
                             sample_id,

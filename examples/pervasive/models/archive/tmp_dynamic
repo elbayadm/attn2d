@@ -1,0 +1,18 @@
+                # print('Read proba:', read_proba.item())
+                read = read_proba.item() > self.read_threshold 
+                if cr > self.patience or ctx > src_lengths.item(): # Force writing:
+                    # print('Forcing a write:', 'cr=', cr, 'ctx:', ctx)
+                    read = 0
+                if cw > self.patience or (self.above_diagonal and step + 1 >= ctx): # Force reading:
+                    # print('Forcing a read:', 'cw=', cw, 'ctx:', ctx, 'step:', step)
+                    read = 1
+
+                if read:
+                    ctx += 1
+                    cw = 0
+                    cr += 1
+                else:
+                    cr = 0
+                    cw += 1
+
+
