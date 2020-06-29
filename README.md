@@ -1,41 +1,30 @@
-<p align="center">
-  <a href="https://github.com/pytorch/fairseq/blob/master/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg" /></a>
-  <a href="https://github.com/pytorch/fairseq/releases"><img alt="Latest Release" src="https://img.shields.io/github/release/pytorch/fairseq.svg" /></a>
-  <a href="https://github.com/pytorch/fairseq/actions?query=workflow:build"><img alt="Build Status" src="https://github.com/pytorch/fairseq/workflows/build/badge.svg" /></a>
-  <a href="https://fairseq.readthedocs.io/en/latest/?badge=latest"><img alt="Documentation Status" src="https://readthedocs.org/projects/fairseq/badge/?version=latest" /></a>
-</p>
+This is a fork of Fairseq(-py) with implementations of the following models:
 
---------------------------------------------------------------------------------
+## Pervasive Attention - 2D Convolutional Neural Networks for Sequence-to-Sequence Prediction (Elbayad et al., 2018, Elbayad et al. 2020)
 
-A fork of Fairseq(-py), a sequence modeling toolkit that allows researchers and
-developers to train custom models for translation, summarization, language
-modeling and other text generation tasks.
+An NMT models with two-dimensional convolutions to jointly encode the source and the target sequences.
+
+Pervasive Attention also provides an extensive decoding grid that we leverage to efficiently train wait-k models.
+
+See [README](examples/pervasive/README.md).
+
+## Efficient Wait-k Models for Simultaneous Machine Translation (Elbayad et al., 2020)
+
+Transformer Wait-k models (Ma et al., 2019) with unidirectional encoders and with joint training of multiple wait-k paths.
+
+See [README](examples/waitk/README.md).
 
 
-# Requirements and Installation
+# Fairseq Requirements and Installation
 
 * [PyTorch](http://pytorch.org/) version >= 1.4.0
 * Python version >= 3.6
 * For training new models, you'll also need an NVIDIA GPU and [NCCL](https://github.com/NVIDIA/nccl)
-* **For faster training** install NVIDIA's [apex](https://github.com/NVIDIA/apex) library:
-```bash
-git clone https://github.com/NVIDIA/apex
-cd apex
-pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" --global-option="--deprecated_fused_adam" --global-option="--xentropy" --global-option="--fast_multihead_attn" ./
-```
 
 To install fairseq:
 ```bash
 pip install fairseq
 ```
-
-On MacOS:
-```bash
-CFLAGS="-stdlib=libc++" pip install fairseq
-```
-
-If you use Docker make sure to increase the shared memory size either with
-`--ipc=host` or `--shm-size` as command line options to `nvidia-docker run`.
 
 **Installing from source**
 
@@ -52,7 +41,29 @@ The license applies to the pre-trained models as well.
 
 # Citation
 
-Please cite as:
+For Pervasive Attention, please cite:
+
+```bibtex
+@InProceedings{elbayad18conll,
+    author ="Elbayad, Maha and Besacier, Laurent and Verbeek, Jakob",
+    title = "Pervasive Attention: 2D Convolutional Neural Networks for Sequence-to-Sequence Prediction",
+    booktitle = "Proceedings of the 22nd Conference on Computational Natural Language Learning",
+    year = "2018",
+ }
+```
+
+For our wait-k models, please cite:
+
+```bibtex
+@article{elbayad20waitk,
+    title={Efficient Wait-k Models for Simultaneous Machine Translation},
+    author={Elbayad, Maha and Besacier, Laurent and Verbeek, Jakob},
+    journal={arXiv preprint arXiv:2005.08595},
+    year={2020}
+}
+```
+
+For Fairseq, please cite:
 
 ```bibtex
 @inproceedings{ott2019fairseq,
@@ -62,3 +73,4 @@ Please cite as:
   year = {2019},
 }
 ```
+
