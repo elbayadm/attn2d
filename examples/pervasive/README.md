@@ -7,9 +7,9 @@ For more details check the [paper](https://arxiv.org/abs/1808.03867).
   <img src="overview.png" width="75%">
 </p>
 
-**Training Pervasive Attention for IWSLT'14 De-En:**
+### Training Pervasive Attention for IWSLT'14 De-En:
 
-Download and preprocess the dataset:
+#### Download and preprocess the dataset:
 
 ```shell
 # Download and prepare the data
@@ -25,7 +25,7 @@ fairseq-preprocess --source-lang de --target-lang en \
     --workers 20
 ```
 
-Train Pervasive Attention on the pre-processed data:
+#### Train Pervasive Attention on the pre-processed data:
 
 ```shell
 MODEL=pa_iwslt_de_en
@@ -35,26 +35,47 @@ CUDA_VISIBLE_DEVICES=0 python train.py data-bin/iwslt14.tokenized.de-en -s de -t
     --user-dir examples/pervasive --arch pervasive \
     --max-source-positions 100  --max-target-positions 100 \
     --left-pad-source False --skip-invalid-size-inputs-valid-test \
-    --save-dir checkpoints/$MODEL--tensorboard-log-dir logs/$MODEL\
-    --seed 1 --memory-efficient --no-epoch-checkpoints --no-progress-bar 
+    --save-dir checkpoints/$MODEL --tensorboard-logdir logs/$MODEL\
+    --seed 1 --memory-efficient --no-epoch-checkpoints --no-progress-bar --log-interval 10 \
     --optimizer adam --adam-betas '(0.9, 0.98)' --weight-decay 0.0001 \
     --max-tokens 600 --update-freq 14 --max-update 50000 \
     --lr-scheduler inverse_sqrt --warmup-updates 4000 --warmup-init-lr '1e-07' --lr 0.002 \
     --min-lr '1e-9' --criterion label_smoothed_cross_entropy --label-smoothing 0.1 \
     --convnet resnet --conv-bias --num-layers 14 --kernel-size 11  \
-    --aggregation gated-max --add-positional-embeddings --share-decoder-input-output-embed
+    --aggregator gated-max --add-positional-embeddings --share-decoder-input-output-embed
 ```
 
-Evalute on the test set:
+#### Evalute on the test set:
 
 ```shell
 CUDA_VISIBLE_DEVICES=0 python generate.py data-bin/iwslt14.tokenized.de-en \
     -s de -t en --gen-subset test \
     --path checkpoints/pa_iwslt_de_en/checkpoint_best.pt \
-    --left-pad-source False --max-source-positions 1024 --max-target-positions 1024 \
+    --model-overrides "{'max_source_positions': 1024, 'max_target_positions': 1024}" --left-pad-source False  \
     --user-dir examples/pervasive --no-progress-bar \
-    --max-tokens 1000 --beam 5  
+    --max-tokens 8000 --beam 5 --remove-bpe 
+
 ```
+
+### Downloaad pre-trained models
+
+Description | Dataset | Model | Test BLEU 
+:---:|:---:|:---:|:---:
+IWSLT'14 De-En | [binary data](https://drive.google.com/file/d/14LqJjPoxJ1VJqJdRpjsXHrfG72SY8M2V/view?usp=sharing) | [model.pt](https://drive.google.com/file/d/1293wkEn21ZMMfr9cbG4BrxE2B9wKCu41/view?usp=sharing) | 34.7
+
+**Evaluate with:**
+
+```shell
+CUDA_VISIBLE_DEVICES=0 python generate.py PATH_to_data_directory \
+    -s de -t en --gen-subset test \
+    --path PATH_to_model.pt \
+    --model-overrides "{'max_source_positions': 1024, 'max_target_positions': 1024}" --left-pad-source False  \
+    --user-dir examples/pervasive --no-progress-bar \
+    --max-tokens 8000 --beam 5  --remove-bpe
+
+```
+
+
 
 
 ## Wait-k decoding with Pervasive Attention 
@@ -76,15 +97,15 @@ CUDA_VISIBLE_DEVICES=0 python train.py data-bin/iwslt14.tokenized.de-en -s de -t
     --user-dir examples/pervasive --arch pervasive \
     --max-source-positions 100  --max-target-positions 100 \
     --left-pad-source False --skip-invalid-size-inputs-valid-test \
-    --save-dir checkpoints/$MODEL --tensorboard-log-dir logs/$MODEL \
-    --seed 1 --memory-efficient --no-epoch-checkpoints --no-progress-bar 
+    --save-dir checkpoints/$MODEL --tensorboard-logdir logs/$MODEL \
+    --seed 1 --memory-efficient --no-epoch-checkpoints --no-progress-bar --log-interval 10  \
     --optimizer adam --adam-betas '(0.9, 0.98)' --weight-decay 0.0001 \
     --max-tokens 600 --update-freq 14 --max-update 50000 \
     --lr-scheduler inverse_sqrt --warmup-updates 4000 --warmup-init-lr '1e-07' --lr 0.002 \
     --min-lr '1e-9' --criterion label_smoothed_cross_entropy --label-smoothing 0.1 \
     --convnet resnet --conv-bias --num-layers 14 --kernel-size 11  \
     --add-positional-embeddings --share-decoder-input-output-embed \
-    --aggregation path-gated-max --waitk $k --unidirectional
+    --aggregator path-gated-max --waitk $k --unidirectional
 ```
 
 Evalute on the test set:
@@ -95,7 +116,7 @@ CUDA_VISIBLE_DEVICES=0 python generate.py data-bin/iwslt14.tokenized.de-en \
     --path checkpoints/pa_wait7_iwslt_deen/checkpoint_best.pt \
     --left-pad-source False --max-source-positions 1024 --max-target-positions 1024 \
     --user-dir examples/pervasive --no-progress-bar \
-    --max-tokens 1000 --beam 5  
+    --max-tokens 1000 --beam 5  --remove-bpe
 ```
 
 
