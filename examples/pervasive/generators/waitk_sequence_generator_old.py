@@ -1,11 +1,3 @@
-# Copyright (c) 2017-present, Facebook, Inc.
-# All rights reserved.
-#
-# This source code is licensed under the license found in the LICENSE file in
-# the root directory of this source tree. An additional grant of patent rights
-# can be found in the PATENTS file in the same directory.
-
-import sys
 import math
 
 import torch
@@ -14,7 +6,7 @@ from fairseq import search, utils
 from fairseq.models import FairseqIncrementalDecoder
 
 
-class SimultaneousPathSequenceGenerator(object):
+class WaitkSequenceGenerator(object):
     def __init__(
         self,
         tgt_dict,
@@ -33,13 +25,14 @@ class SimultaneousPathSequenceGenerator(object):
         diverse_beam_groups=-1,
         diverse_beam_strength=0.5,
         match_source_len=False,
+        match_source_len_scale=1,
         no_repeat_ngram_size=0,
-        shift=5,
-        delta=1,
+        without_caching=False,
+        force_unidir=False,
+        waitk=1,
         catchup=1,
-        update_context=False,
-        force_end_reading=False,
-        end_scale=1,
+        delta=1,
+        finish_reading=False,
     ):
         """Generates translations of a given source sentence.
 
@@ -76,6 +69,9 @@ class SimultaneousPathSequenceGenerator(object):
         self.pad = tgt_dict.pad()
         self.unk = tgt_dict.unk()
         self.eos = tgt_dict.eos()
+        self.src_bos = tgt_dict.bos()
+        self.src_eos = tgt_dict.eos()
+
         self.vocab_size = len(tgt_dict)
         self.beam_size = beam_size
         # the max beam size is the dictionary size - 1, since we never select pad
@@ -90,16 +86,26 @@ class SimultaneousPathSequenceGenerator(object):
         self.retain_dropout = retain_dropout
         self.match_source_len = match_source_len
         self.no_repeat_ngram_size = no_repeat_ngram_size
-        self.shift = shift
-        self.delta = delta
+        self.without_caching = without_caching
+        self.force_unidir = force_unidir
+        self.waitk = waitk
         self.catchup = catchup
-        self.update_context = update_context
-        self.force_end_reading = force_end_reading
-        self.end_scale = end_scale
+        self.delta = delta
+        self.finish_reading = finish_reading
+        self.match_source_len_scale = match_source_len_scale
 
         assert sampling_topk < 0 or sampling, '--sampling-topk requires --sampling'
 
-        self.search = search.SimBeamSearch(tgt_dict)
+        if sampling:
+            self.search = search.Sampling(tgt_dict, sampling_topk, sampling_temperature)
+        elif diverse_beam_groups > 0:
+            self.search = search.DiverseBeamSearch(tgt_dict, diverse_beam_groups, diverse_beam_strength)
+        elif match_source_len:
+            self.search = search.LengthConstrainedBeamSearch(
+                tgt_dict, min_len_a=self.match_source_len_scale, min_len_b=0, max_len_a=self.match_source_len_scale, max_len_b=0,
+            )
+        else:
+            self.search = search.BeamSearch(tgt_dict)
 
     @torch.no_grad()
     def generate(
@@ -130,16 +136,17 @@ class SimultaneousPathSequenceGenerator(object):
         }
 
         src_tokens = encoder_input['src_tokens']
-        src_lengths = (src_tokens.ne(self.eos) & src_tokens.ne(self.pad)).long().sum(dim=1)
-        dup_src_lengths = src_lengths.clone()
+        src_lengths = (src_tokens.ne(self.eos) & src_tokens.ne(self.pad) & src_tokens.ne(self.src_bos)).long().sum(dim=1)
+        self.shift_ctx_back = torch.any(src_tokens.eq(self.src_bos)).item()
         input_size = src_tokens.size()
+        max_src_lengths_weos = src_lengths.max().item() + 1
         # batch dimension goes first followed by source lengths
         bsz = input_size[0]
         src_len = input_size[1]
         beam_size = self.beam_size
 
         if self.match_source_len:
-            max_len = src_lengths.max().item()
+            max_len = int(src_lengths.max().item() * self.match_source_len_scale)
         else:
             max_len = min(
                 int(self.max_len_a * src_len + self.max_len_b),
@@ -147,14 +154,14 @@ class SimultaneousPathSequenceGenerator(object):
                 model.max_decoder_positions() - 1,
             )
 
-        # encoder outs evaluated once:
-        encoder_outs = model.forward_encoder(encoder_input)
+        # compute the encoder output for each beam
+        encoder_outs = model.forward_encoder(encoder_input, force_unidir=self.force_unidir)
         new_order = torch.arange(bsz).view(-1, 1).repeat(1, beam_size).view(-1)
         new_order = new_order.to(src_tokens.device).long()
         encoder_outs = model.reorder_encoder_out(encoder_outs, new_order)
-        dup_src_lengths = dup_src_lengths.index_select(0, new_order)
 
         # initialize buffers
+        contexts = []
         scores = src_tokens.new(bsz * beam_size, max_len + 1).float().fill_(0)
         scores_buf = scores.clone()
         tokens = src_tokens.data.new(bsz * beam_size, max_len + 2).long().fill_(self.pad)
@@ -227,7 +234,6 @@ class SimultaneousPathSequenceGenerator(object):
             tokens_clone = tokens.index_select(0, bbsz_idx)
             tokens_clone = tokens_clone[:, 1:step + 2]  # skip the first index, which is EOS
             tokens_clone[:, step] = self.eos
-
             attn_clone = attn.index_select(0, bbsz_idx)[:, :, 1:step+2] if attn is not None else None
 
             # compute scores per token position
@@ -255,10 +261,11 @@ class SimultaneousPathSequenceGenerator(object):
 
                 sents_seen.add((sent, unfin_idx))
 
-                if self.match_source_len and step > src_lengths[unfin_idx]:
+                if self.match_source_len and step > src_lengths[unfin_idx] * self.match_source_len_scale:
                     score = -math.inf
 
                 def get_hypo():
+
                     if attn_clone is not None:
                         # remove padding tokens from attn scores
                         hypo_attn = attn_clone[i][nonpad_idxs[sent]]
@@ -266,16 +273,19 @@ class SimultaneousPathSequenceGenerator(object):
                     else:
                         hypo_attn = None
                         alignment = None
-
-                    seq = tokens_clone[i][tokens_clone[i] != self.eos]
-                    hypo = {
-                        'tokens': seq,
+                    # truncate contexts up to source length:
+                    ctx_hyp = [min(c-1*self.shift_ctx_back, src_lengths[idx].item()) for c in contexts]
+                    # print('Tokens clone:', 'index:', i, tokens_clone.size())
+                    # print('ctx_hyp:', len(ctx_hyp), 'first', len(tokens_clone[i])-1)
+                    ctx_hyp = ctx_hyp[:len(tokens_clone[i])-1] # Remove EOS context (src length does not include eos either)
+                    return {
+                        'tokens': tokens_clone[i],
                         'score': score,
+                        'context': ctx_hyp,
                         'attention': hypo_attn,  # src_len x tgt_len
                         'alignment': alignment,
                         'positional_scores': pos_scores[i],
                     }
-                    return hypo
 
                 if len(finalized[sent]) < beam_size:
                     finalized[sent].append(get_hypo())
@@ -302,9 +312,8 @@ class SimultaneousPathSequenceGenerator(object):
 
         reorder_state = None
         batch_idxs = None
-
-        
-        for step in range(max_len + 1):
+        start_caching = False
+        for step in range(max_len + 1):  # one extra step for EOS marker
             # reorder decoder internal states based on the prev choice of beams
             if reorder_state is not None:
                 if batch_idxs is not None:
@@ -313,18 +322,29 @@ class SimultaneousPathSequenceGenerator(object):
                     reorder_state.view(-1, beam_size).add_(corr.unsqueeze(-1) * beam_size)
                 model.reorder_incremental_state(reorder_state)
                 model.reorder_encoder_out(encoder_outs, reorder_state)
-                dup_src_lengths = dup_src_lengths.index_select(0, reorder_state)
 
-            # decode t with context shift + [t/catchup] delta
-            ctx = self.shift + ((step) // self.catchup) * self.delta
-            lprobs, avg_attn_scores = model.forward_decoder(
-                tokens[:, :step + 1],
-                encoder_outs,
-                ctx,
-                update_context=self.update_context
-            )
+            # start caching if the source is fully read:
+
+            context_size = (step // self.catchup ) * self.delta + self.waitk
+            contexts.append(context_size)
+            # start_caching = context_size == max_src_lengths_weos
+            # without_caching = self.without_caching and context_size <= max_src_lengths_weos
+            start_cahing = False
+            without_caching = self.without_caching
+            # print('Step:', step, 'Ctx:', context_size, 'Starting to cache:', start_caching, 'Without caching:', without_caching)
+            lprobs, avg_attn_scores = model.forward_decoder(tokens[:, :step + 1],
+                                                            encoder_outs,
+                                                            context_size,
+                                                            without_caching,
+                                                            start_caching=start_caching)
+
             lprobs[:, self.pad] = -math.inf  # never select pad
             lprobs[:, self.unk] -= self.unk_penalty  # apply unk penalty
+            if self.finish_reading:
+                still_reading = context_size <= src_lengths
+                # print('lprobs.size()', lprobs.size())
+                # print('Still reading nonz', still_reading.nonzero())
+                lprobs[still_reading.nonzero(), self.eos] = -math.inf  # never select pad
 
             if self.no_repeat_ngram_size > 0:
                 # for each beam and batch sentence, generate a list of previous ngrams
@@ -335,7 +355,6 @@ class SimultaneousPathSequenceGenerator(object):
                         gen_ngrams[bbsz_idx][tuple(ngram[:-1])] = \
                                 gen_ngrams[bbsz_idx].get(tuple(ngram[:-1]), []) + [ngram[-1]]
 
-            
             # Record attention scores
             if avg_attn_scores is not None:
                 if attn is None:
@@ -350,19 +369,16 @@ class SimultaneousPathSequenceGenerator(object):
             eos_scores = buffer('eos_scores', type_of=scores)
             if step < max_len:
                 self.search.set_src_lengths(src_lengths)
+
                 if self.no_repeat_ngram_size > 0:
                     def calculate_banned_tokens(bbsz_idx):
-                        # before decoding the next token, 
-                        # prevent decoding of ngrams that have already appeared
-                        ngram_index = tuple(tokens[bbsz_idx, step + 2 -
-                                                   self.no_repeat_ngram_size:step + 1].tolist())
+                        # before decoding the next token, prevent decoding of ngrams that have already appeared
+                        ngram_index = tuple(tokens[bbsz_idx, step + 2 - self.no_repeat_ngram_size:step + 1].tolist())
                         return gen_ngrams[bbsz_idx].get(ngram_index, [])
 
                     if step + 2 - self.no_repeat_ngram_size >= 0:
-                        # no banned tokens if we haven't generated 
-                        # no_repeat_ngram_size tokens yet
-                        banned_tokens = [calculate_banned_tokens(bbsz_idx)
-                                         for bbsz_idx in range(bsz * beam_size)]
+                        # no banned tokens if we haven't generated no_repeat_ngram_size tokens yet
+                        banned_tokens = [calculate_banned_tokens(bbsz_idx) for bbsz_idx in range(bsz * beam_size)]
                     else:
                         banned_tokens = [[] for bbsz_idx in range(bsz * beam_size)]
 
@@ -398,10 +414,10 @@ class SimultaneousPathSequenceGenerator(object):
                         lprobs.view(bsz, -1, self.vocab_size),
                         scores.view(bsz, beam_size, -1)[:, :, :step],
                     )
-
             else:
                 # make probs contain cumulative scores for each hypothesis
                 lprobs.add_(scores[:, step - 1].unsqueeze(-1))
+
                 # finalize all active hypotheses once we hit max_len
                 # pick the hypothesis with the highest prob of EOS right now
                 torch.sort(
@@ -419,11 +435,14 @@ class SimultaneousPathSequenceGenerator(object):
             cand_bbsz_idx = cand_beams.add(bbsz_offsets)
 
             # finalize hypotheses that end in eos
-            eos_mask = cand_indices.eq(self.eos) # * (ctx >= 0.9 * src_lengths).view(bsz, beam_size)
-            if self.force_end_reading:
-                done_reading = ctx  > (self.end_scale * dup_src_lengths)
-                done_reading = done_reading.unsqueeze(-1).expand(-1, eos_mask.size(1))
-                eos_mask = eos_mask * done_reading
+            eos_mask = cand_indices.eq(self.eos) 
+            # if self.finish_reading:
+                # # Only finish sentences that read the fill source:
+                # done_reading = context_size > src_lengths
+                # # print('Done reaidng:', done_reading.size())
+                # # print('Initial eos mask', eos_mask.size())
+                # eos_mask = eos_mask * done_reading.unsqueeze(-1)
+                # # print('Product:', eos_mask)
 
             finalized_sents = set()
             if step >= self.min_len:
@@ -464,16 +483,13 @@ class SimultaneousPathSequenceGenerator(object):
                 if prefix_tokens is not None:
                     prefix_tokens = prefix_tokens[batch_idxs]
                 src_lengths = src_lengths[batch_idxs]
-                scores = scores.view(bsz, -1)[batch_idxs].view(new_bsz * beam_size, -1)
 
+                scores = scores.view(bsz, -1)[batch_idxs].view(new_bsz * beam_size, -1)
                 scores_buf.resize_as_(scores)
                 tokens = tokens.view(bsz, -1)[batch_idxs].view(new_bsz * beam_size, -1)
                 tokens_buf.resize_as_(tokens)
-                
                 if attn is not None:
-                    attn = attn.view(bsz, -1)[batch_idxs].view(
-                        new_bsz * beam_size, attn.size(1), -1
-                    )
+                    attn = attn.view(bsz, -1)[batch_idxs].view(new_bsz * beam_size, attn.size(1), -1)
                     attn_buf.resize_as_(attn)
                 bsz = new_bsz
             else:
@@ -569,81 +585,60 @@ class EnsembleModel(torch.nn.Module):
         return min(m.max_decoder_positions() for m in self.models)
 
     @torch.no_grad()
-    def forward_encoder(self, encoder_input):
-        """
-        src_tokens :  B, Ts
-        read_lenghts: gives thee index of the last tokn to read. B
-        """
-        # maksk unread tokens:
-        return [model.encoder(**encoder_input) for model in self.models]
-        
+    def forward_encoder(self, encoder_input, force_unidir=False):
+        if not self.has_encoder():
+            return None
+        return [model.encoder(**encoder_input, unidir=force_unidir) for model in self.models]
+
     @torch.no_grad()
-    def forward_decoder(self, tokens, encoder_outs, context_size, update_context=False):
+    def forward_decoder(self, tokens, encoder_outs, context_size, without_caching, start_caching):
         if len(self.models) == 1:
             return self._decode_one(
                 tokens,
                 self.models[0],
-                encoder_outs[0],
-                context_size,
+                encoder_outs[0] if self.has_encoder() else None,
                 self.incremental_states,
                 log_probs=True,
-                update_context=update_context,
+                context_size=context_size,
+                without_caching=without_caching,
+                start_caching=start_caching,
             )
 
         log_probs = []
         avg_attn = None
-        avg_exits = None
-        avg_lengths = None
         for model, encoder_out in zip(self.models, encoder_outs):
-            probs, attn, exits, lengths = self._decode_one(
-                tokens, model, encoder_out, contextt_size,
-                self.incremental_states, log_probs=True,
-                update_context=update_context
-            )
+            probs, attn = self._decode_one(tokens, model, encoder_out,
+                                           self.incremental_states, log_probs=True)
             log_probs.append(probs)
             if attn is not None:
                 if avg_attn is None:
                     avg_attn = attn
                 else:
                     avg_attn.add_(attn)
-
-            if exits is not None:
-                if avg_exits is not None:
-                    avg_exits.add_(exits)
-                else:
-                    avg_exits = exits
-            if lengths is not None:
-                if avg_lengths is not None:
-                    avg_lengths.add_(lengths)
-                else:
-                    avg_lengths = lengths
-
-        avg_probs = torch.logsumexp(torch.stack(log_probs, dim=0), dim=0) - math.log(len(self.models))
+        avg_probs = torch.logsumexp(torch.stack(
+            log_probs, dim=0), dim=0
+        ) - math.log(len(self.models))
         if avg_attn is not None:
             avg_attn.div_(len(self.models))
-        
-        return avg_probs, avg_attn, avg_exits, avg_lengths
+        return avg_probs, avg_attn
 
-    def _decode_one(self, tokens, model, encoder_out, context_size,
-                    incremental_states, log_probs,
-                    update_context=False):
-        if self.incremental_states is not None:
-            if update_context:
-                decoder_out = list(model.decoder.forward_one_with_update(tokens, encoder_out, context_size,
-                                                                         incremental_state=self.incremental_states[model]))
-            else:
-
-                decoder_out = list(model.decoder.forward_one(tokens, encoder_out, context_size,
-                                                             incremental_state=self.incremental_states[model]))
-        else:
-            decoder_out = list(model.decoder.forward_one(tokens, encoder_out, context_size,))
+    def _decode_one(self, tokens, model, encoder_out,
+                    incremental_states, log_probs, context_size,
+                    without_caching, start_caching):
+        decoder_out = list(model.decoder(tokens, encoder_out,
+                                         incremental_state=self.incremental_states[model],
+                                         context_size=context_size,
+                                         cache_decoder=not without_caching,
+                                         start_caching=start_caching))
         decoder_out[0] = decoder_out[0][:, -1:, :]
-        track = decoder_out[1]
-        attn = track['attn']
-        if attn is not None:
-            if type(attn) is dict:
-                attn = attn['attn']
-            attn = attn[:, -1, :]
+        # attn = decoder_out[1]
+        # if type(attn) is dict:
+            # attn = attn['attn']
+        # if attn is not None:
+            # if type(attn) is dict:
+                # attn = attn['attn']
+            # attn = attn[:, -1, :]
+        attn = None
         probs = model.get_normalized_probs(decoder_out, log_probs=log_probs)
         probs = probs[:, -1, :]
         return probs, attn
