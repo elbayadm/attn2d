@@ -34,7 +34,6 @@ class WaitkSequenceGenerator(nn.Module):
         search_strategy=None,
         eos=None,
         waitk=1,
-        without_caching=False,
     ):
         super().__init__()
         if isinstance(models, EnsembleModel):
@@ -67,7 +66,6 @@ class WaitkSequenceGenerator(nn.Module):
         if not self.retain_dropout:
             self.model.eval()
         self.waitk = waitk
-        self.without_caching = without_caching
 
     def cuda(self):
         self.model.cuda()

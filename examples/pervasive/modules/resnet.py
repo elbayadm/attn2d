@@ -30,8 +30,8 @@ class ResNet(ConvNet):
         self.residual_blocks = nn.ModuleList([])
         for _ in range(num_layers):
             self.residual_blocks.append(_ResLayer(num_features, kernel_size, args))
-        for name, p in self.named_parameters():
-            print(name, p.size())
+        # for name, p in self.named_parameters():
+            # print(name, p.size())
         
     @staticmethod
     def add_args(parser):
@@ -105,7 +105,7 @@ class _ResLayer(nn.Module):
                                mid_features,
                                kernel_size=1,
                                stride=1,
-                               bias=args.conv_bias,
+                               bias=True, # args.conv_bias,
                                groups=1)  # num-heads??
 
         self.mconv2 = MaskedConvolution(

@@ -147,3 +147,11 @@ CUDA_VISIBLE_DEVICES=0 python generate.py PATH_to_data_directory  \
  }
 ```
 
+```bibtex
+@article{elbayad20waitk,
+    title={Efficient Wait-k Models for Simultaneous Machine Translation},
+    author={Elbayad, Maha and Besacier, Laurent and Verbeek, Jakob},
+    journal={arXiv preprint arXiv:2005.08595},
+    year={2020}
+}
+```

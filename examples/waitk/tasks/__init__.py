@@ -3,5 +3,5 @@ import os
 
 for file in os.listdir(os.path.dirname(__file__)):
     if file.endswith('.py') and not file.startswith('_'):
-        generator_name = file[:file.find('.py')]
-        importlib.import_module('examples.waitk.generators.' + generator_name)
+        task_name = file[:file.find('.py')]
+        importlib.import_module('examples.waitk.tasks.' + task_name)

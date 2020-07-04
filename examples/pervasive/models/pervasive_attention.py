@@ -167,6 +167,19 @@ class PervasiveEncoder(FairseqEncoder):
             return self.max_source_positions
         return min(self.max_source_positions, self.embed_positions.max_positions)
 
+    def slice_encoder_out(self, encoder_out, context_size):
+        """ Reorder encoder output according to *new_order*.  """
+        sliced_encoder = {}
+        if encoder_out['encoder_out'] is not None:
+            sliced_encoder['encoder_out'] = encoder_out['encoder_out'].clone()[:, :context_size]
+        else:
+            sliced_encoder['encoder_out'] = None
+        if encoder_out['encoder_padding_mask'] is not None:
+            sliced_encoder['encoder_padding_mask'] = encoder_out['encoder_padding_mask'].clone()[:, :context_size]
+        else:
+            sliced_encoder['encoder_padding_mask'] = None
+        return sliced_encoder
+
     def reorder_encoder_out(self, encoder_out, new_order):
         """
         Reorder encoder output according to *new_order*.
@@ -292,12 +305,9 @@ class PervasiveDecoder(FairseqIncrementalDecoder):
         )  # B, Tt, Ts, C
 
         if incremental_state is not None:
-            # Keep only the last step:
-            x = x[:, -1:]  # FIXME one-step of the aggregator
-            # if context_size is not None and context_size < Ts:
-                # x = x[:, :, :context_size]
-        
-        x, attn = self.aggregator(x, need_attention_weights=self.need_attention_weights)
+            x, attn = self.aggregator.one_step(x)
+        else:
+            x, attn = self.aggregator(x, need_attention_weights=self.need_attention_weights)
         x = self.projection(x) if self.projection is not None else x  # B, Tt, C
         x = self.prediction_dropout(x)
 
@@ -346,5 +356,8 @@ def base_architecture(args):
         (args.encoder_embed_dim + args.decoder_embed_dim) // args.divide_channels
     )
     args.conv_groups = getattr(args, 'conv_groups', args.bottleneck)
+    # FIXME
+    if args.conv_groups is None:
+        args.conv_groups = args.bottleneck
     args.prediction_dropout = getattr(args, 'prediction_dropout', 0.2)
     args.embeddings_dropout = getattr(args, 'embeddings_dropout', 0.2)

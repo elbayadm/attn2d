@@ -35,7 +35,7 @@ class ConvNet(nn.Module):
         )
 
         parser.add_argument(
-            "--conv-groups", type=int, help="Grouping of 2d convolutions"
+            "--conv-groups", type=int, help="Grouping of 2d convolutions",
         )
 
         parser.add_argument(
