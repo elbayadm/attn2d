@@ -1,6 +1,6 @@
 This is a fork of Fairseq(-py) with implementations of the following models:
 
-## Pervasive Attention - 2D Convolutional Neural Networks for Sequence-to-Sequence Prediction (Elbayad et al., 2018, Elbayad et al. 2020)
+## Pervasive Attention - 2D Convolutional Neural Networks for Sequence-to-Sequence Prediction 
 
 An NMT models with two-dimensional convolutions to jointly encode the source and the target sequences.
 
@@ -8,7 +8,7 @@ Pervasive Attention also provides an extensive decoding grid that we leverage to
 
 See [README](examples/pervasive/README.md).
 
-## Efficient Wait-k Models for Simultaneous Machine Translation (Elbayad et al., 2020)
+## Efficient Wait-k Models for Simultaneous Machine Translation 
 
 Transformer Wait-k models (Ma et al., 2019) with unidirectional encoders and with joint training of multiple wait-k paths.
 
