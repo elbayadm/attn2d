@@ -9,7 +9,7 @@ For more details check the [paper](https://arxiv.org/abs/1808.03867).
 
 ### Training Pervasive Attention for IWSLT'14 De-En:
 
-#### Download and preprocess the dataset:
+#### Download and pre-process the dataset:
 
 ```shell
 # Download and prepare the data
@@ -45,7 +45,7 @@ CUDA_VISIBLE_DEVICES=0 python train.py data-bin/iwslt14.tokenized.de-en -s de -t
     --aggregator gated-max --add-positional-embeddings --share-decoder-input-output-embed
 ```
 
-#### Evalute on the test set:
+#### Evaluate on the test set:
 
 ```shell
 CUDA_VISIBLE_DEVICES=0 python generate.py data-bin/iwslt14.tokenized.de-en \
@@ -57,7 +57,7 @@ CUDA_VISIBLE_DEVICES=0 python generate.py data-bin/iwslt14.tokenized.de-en \
 
 ```
 
-### Downloaad pre-trained models
+### Download pre-trained models
 
 Description | Dataset | Model | Test BLEU 
 :---:|:---:|:---:|:---:
@@ -85,14 +85,13 @@ CUDA_VISIBLE_DEVICES=0 python generate.py PATH_to_data_directory \
 </p>
 
 
-**Training Wait-k Pervasive Attention for IWSLT'14 De-En:**
+### Training Wait-k Pervasive Attention for IWSLT'14 De-En:
 
 ```shell
 k=7
 MODEL=pa_wait${k}_iwslt_deen
 mkdir -p checkpoints/$MODEL
 mkdir -p logs
-
 CUDA_VISIBLE_DEVICES=0 python train.py data-bin/iwslt14.tokenized.de-en -s de -t en \
     --user-dir examples/pervasive --arch pervasive \
     --max-source-positions 100  --max-target-positions 100 \
@@ -108,18 +107,35 @@ CUDA_VISIBLE_DEVICES=0 python train.py data-bin/iwslt14.tokenized.de-en -s de -t
     --aggregator path-gated-max --waitk $k --unidirectional
 ```
 
-Evalute on the test set:
+#### Evaluate on the test set:
 
 ```shell
+k=5 # Evaluation time k
 CUDA_VISIBLE_DEVICES=0 python generate.py data-bin/iwslt14.tokenized.de-en \
     -s de -t en --gen-subset test \
-    --path checkpoints/pa_wait7_iwslt_deen/checkpoint_best.pt \
-    --left-pad-source False --max-source-positions 1024 --max-target-positions 1024 \
+    --path checkpoints/pa_wait7_iwslt_deen/checkpoint_best.pt --task waitk_translation --eval-waitk $k \
+    --model-overrides "{'max_source_positions': 1024, 'max_target_positions': 1024}" --left-pad-source False  \
     --user-dir examples/pervasive --no-progress-bar \
-    --max-tokens 1000 --beam 5  --remove-bpe
+    --max-tokens 8000 --remove-bpe --beam 1
 ```
 
+### Download pre-trained models
 
+Description | Dataset | Model 
+:---:|:---:|:---:
+IWSLT'14 De-En | [binary data](https://drive.google.com/file/d/14LqJjPoxJ1VJqJdRpjsXHrfG72SY8M2V/view?usp=sharing) | [model.pt](https://drive.google.com/file/d/1YJbqxk5kqAzscx4SAOnTGCvG-QranKDa/view?usp=sharingv) 
+
+**Evaluate with:**
+
+```shell
+k=5 # Evaluation time k
+CUDA_VISIBLE_DEVICES=0 python generate.py PATH_to_data_directory  \
+    -s de -t en --gen-subset test \
+    --path PATH_to_model.pt --task waitk_translation --eval-waitk $k \
+    --model-overrides "{'max_source_positions': 1024, 'max_target_positions': 1024}" --left-pad-source False  \
+    --user-dir examples/pervasive --no-progress-bar \
+    --max-tokens 8000 --remove-bpe --beam 1
+```
 
 ## Citation:
 ```bibtex
