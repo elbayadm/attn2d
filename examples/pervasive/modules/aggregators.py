@@ -23,6 +23,9 @@ class AVG(nn.Module):
         x = x.mean(dim=2)  # B, Tt, C
         return x, None
 
+    def one_step(self, x):
+        return self.forward(x)
+
 
 @register_aggregator('max')
 class MAX(nn.Module):
@@ -47,6 +50,9 @@ class MAX(nn.Module):
             # Normalize
             attn = attn / attn.sum(dim=-1, keepdim=True)
         return x, attn
+
+    def one_step(self, x):
+        return self.forward(x)
 
 
 @register_aggregator('gated-max')
@@ -76,6 +82,9 @@ class GatedMAX2(nn.Module):
             attn = attn / attn.sum(dim=-1, keepdim=True)
         return x, attn
 
+    def one_step(self, x):
+        return self.forward(x)
+
 
 @register_aggregator('attn')
 class ATTN(nn.Module):
@@ -97,6 +106,9 @@ class ATTN(nn.Module):
             return x, alpha.squeeze(-1)
         return x, None
 
+    def one_step(self, x):
+        return self.forward(x)
+
 
 @register_aggregator('cell')
 class UnidirCell(nn.Module):
@@ -112,6 +124,9 @@ class UnidirCell(nn.Module):
 
     def forward(self, x, need_attention_weights=False):
         return x[:, :, -1], None
+
+    def one_step(self, x):
+        return self.forward(x)
 
 
 @register_aggregator('path-max')

@@ -134,7 +134,8 @@ class _ResLayer(nn.Module):
         if self.relu: # resnet-addup-nonorm vs resnet-addup-nonorm2 (False)
             x = F.relu(x)
         x = self.mconv2(x, incremental_state)
-        if self.training and not self.nonzero_padding:
+        # if self.training and not self.nonzero_padding:
+        if not self.nonzero_padding:
             if encoder_mask is not None:
                 x = x.masked_fill(encoder_mask.unsqueeze(1).unsqueeze(1), 0)
             if decoder_mask is not None:
