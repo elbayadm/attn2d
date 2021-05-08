@@ -81,13 +81,18 @@ IWSLT'14 De-En | [binary data](https://drive.google.com/file/d/14LqJjPoxJ1VJqJdR
 **Evaluate with:**
 
 ```shell
+tar xzf iwslt14_de_en.tar.gz
+tar xzf tf_waitk_model.tar.gz
+
 k=5 # Evaluation time k
+output=wait$k.log
 CUDA_VISIBLE_DEVICES=0 python generate.py PATH_to_data_directory  \
     -s de -t en --gen-subset test \
     --path PATH_to_model.pt --task waitk_translation --eval-waitk $k \
     --model-overrides "{'max_source_positions': 1024, 'max_target_positions': 1024}" --left-pad-source False  \
     --user-dir examples/waitk --no-progress-bar \
-    --max-tokens 8000 --remove-bpe --beam 1
+    --max-tokens 8000 --remove-bpe --beam 1 2>&1 | tee -a $output
+python PATH_to_examples/waitk/eval_delay.py $output
 ```
 
 
