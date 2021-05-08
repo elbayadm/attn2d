@@ -304,7 +304,7 @@ class WaitkSequenceGenerator(nn.Module):
             # cand_bbsz_idx contains beam indices for the top candidate
             # hypotheses, with a range of values: [0, bsz*beam_size),
             # and dimensions: [bsz, cand_size]
-            cand_bbsz_idx = cand_beams.add(bbsz_offsets)
+            cand_bbsz_idx = cand_beams.add(bbsz_offsets).int()
 
             # finalize hypotheses that end in eos
             eos_mask = cand_indices.eq(self.eos) & cand_scores.ne(-math.inf)
@@ -354,7 +354,7 @@ class WaitkSequenceGenerator(nn.Module):
                 eos_mask = eos_mask[batch_idxs]
                 cand_beams = cand_beams[batch_idxs]
                 bbsz_offsets.resize_(new_bsz, 1)
-                cand_bbsz_idx = cand_beams.add(bbsz_offsets)
+                cand_bbsz_idx = cand_beams.add(bbsz_offsets).int()
                 cand_scores = cand_scores[batch_idxs]
                 cand_indices = cand_indices[batch_idxs]
 
