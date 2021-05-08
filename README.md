@@ -21,17 +21,11 @@ See [README](examples/waitk/README.md).
 * Python version >= 3.6
 * For training new models, you'll also need an NVIDIA GPU and [NCCL](https://github.com/NVIDIA/nccl)
 
-To install fairseq:
-```bash
-pip install fairseq
-```
+**Installing Fairseq**
 
-**Installing from source**
-
-To install fairseq from source and develop locally:
 ```bash
-git clone https://github.com/pytorch/fairseq
-cd fairseq
+git clone https://github.com/elbayadm/attn2d
+cd attn2d
 pip install --editable .
 ```
 
